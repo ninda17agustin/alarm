@@ -51,7 +51,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeSuccessModalBtn = document.getElementById('closeSuccessModalBtn');
 
     // --- State Variables ---
-    let alarms = JSON.parse(localStorage.getItem('math_alarms')) || [];
+    let alarms = [];
+    try {
+        alarms = JSON.parse(localStorage.getItem('math_alarms')) || [];
+    } catch (e) {
+        alarms = [];
+    }
+
     let currentRingingAlarm = null;
     let currentProblem = null;
     let swRegistration = null;
@@ -65,19 +71,54 @@ document.addEventListener('DOMContentLoaded', () => {
     let previewAudioElement = null;
     let lastTriggeredMinute = '';
 
-    // Register Service Worker for Mobile Background Notifications
+    // --- Live Clock Engine (Fires immediately) ---
+    function updateClock() {
+        const date = new Date();
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const seconds = String(date.getSeconds()).padStart(2, '0');
+        const currentTimeStr = `${hours}:${minutes}:${seconds}`;
+        const currentHHMM = `${hours}:${minutes}`;
+
+        if (liveClockEl) {
+            liveClockEl.textContent = currentTimeStr;
+        }
+
+        if (liveDateEl) {
+            const options = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+            liveDateEl.textContent = date.toLocaleDateString('id-ID', options);
+        }
+
+        if (seconds === '00' && currentHHMM !== lastTriggeredMinute) {
+            checkAndTriggerAlarm(currentHHMM);
+        }
+    }
+
+    // Run clock immediately and start interval
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    // --- Set Default Alarm Time (Current Time + 1 Min) ---
+    if (alarmTimeInput) {
+        const now = new Date();
+        now.setMinutes(now.getMinutes() + 1);
+        const defaultHours = String(now.getHours()).padStart(2, '0');
+        const defaultMinutes = String(now.getMinutes()).padStart(2, '0');
+        alarmTimeInput.value = `${defaultHours}:${defaultMinutes}`;
+    }
+
+    // --- Service Worker Registration ---
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js').then((reg) => {
             swRegistration = reg;
-            console.log('Service Worker registered successfully:', reg.scope);
         }).catch((err) => {
-            console.warn('Service Worker registration failed:', err);
+            console.warn('SW registration skipped:', err);
         });
     }
 
-    // Check Notification Permission
+    // --- Notification Status Check ---
     function checkNotificationStatus() {
-        if ('Notification' in window) {
+        if ('Notification' in window && notifBanner) {
             if (Notification.permission !== 'granted') {
                 notifBanner.classList.remove('hidden');
             } else {
@@ -88,94 +129,95 @@ document.addEventListener('DOMContentLoaded', () => {
 
     checkNotificationStatus();
 
-    enableNotifBtn.addEventListener('click', () => {
-        if ('Notification' in window) {
-            Notification.requestPermission().then((permission) => {
-                if (permission === 'granted') {
-                    notifBanner.classList.add('hidden');
-                    showNotification('Notifikasi alarm berhasil diaktifkan!');
-                } else {
-                    alert('Izin notifikasi ditolak. Anda perlu mengizinkan notifikasi di setelan Chrome HP Anda.');
-                }
-            });
-        }
-    });
-
-    // Set default time input to current time + 1 min
-    const now = new Date();
-    now.setMinutes(now.getMinutes() + 1);
-    const defaultHours = String(now.getHours()).padStart(2, '0');
-    const defaultMinutes = String(now.getMinutes()).padStart(2, '0');
-    alarmTimeInput.value = `${defaultHours}:${defaultMinutes}`;
+    if (enableNotifBtn) {
+        enableNotifBtn.addEventListener('click', () => {
+            if ('Notification' in window) {
+                Notification.requestPermission().then((permission) => {
+                    if (permission === 'granted') {
+                        if (notifBanner) notifBanner.classList.add('hidden');
+                        showNotification('Notifikasi alarm berhasil diaktifkan!');
+                    } else {
+                        alert('Izin notifikasi ditolak. Silakan izinkan di setelan browser HP Anda.');
+                    }
+                });
+            }
+        });
+    }
 
     // --- Mobile Tab Switching Logic ---
     if (tabBtnForm && tabBtnList) {
         tabBtnForm.addEventListener('click', () => {
             tabBtnForm.classList.add('active');
             tabBtnList.classList.remove('active');
-            formCard.classList.add('active-tab');
-            listCard.classList.remove('active-tab');
+            if (formCard) formCard.classList.add('active-tab');
+            if (listCard) listCard.classList.remove('active-tab');
         });
 
         tabBtnList.addEventListener('click', () => {
             tabBtnList.classList.add('active');
             tabBtnForm.classList.remove('active');
-            listCard.classList.add('active-tab');
-            formCard.classList.remove('active-tab');
+            if (listCard) listCard.classList.add('active-tab');
+            if (formCard) formCard.classList.remove('active-tab');
         });
     }
 
-    // --- Custom Audio Input Change Handler ---
-    alarmSoundSelect.addEventListener('change', () => {
-        if (alarmSoundSelect.value === 'custom') {
-            customAudioGroup.classList.remove('hidden');
-        } else {
-            customAudioGroup.classList.add('hidden');
-            stopPreviewSound();
-        }
-    });
+    // --- Custom Audio Selection ---
+    if (alarmSoundSelect) {
+        alarmSoundSelect.addEventListener('change', () => {
+            if (alarmSoundSelect.value === 'custom') {
+                if (customAudioGroup) customAudioGroup.classList.remove('hidden');
+            } else {
+                if (customAudioGroup) customAudioGroup.classList.add('hidden');
+                stopPreviewSound();
+            }
+        });
+    }
 
-    customAudioFileInput.addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
+    if (customAudioFileInput) {
+        customAudioFileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
 
-        if (file.size > 5 * 1024 * 1024) {
-            alert('Ukuran file audio terlalu besar! Maksimal 5MB.');
-            customAudioFileInput.value = '';
-            fileNameDisplay.textContent = 'Belum ada file dipilih';
-            previewCustomAudioBtn.disabled = true;
-            uploadedCustomAudioDataUrl = null;
-            return;
-        }
+            if (file.size > 5 * 1024 * 1024) {
+                alert('Ukuran file audio terlalu besar! Maksimal 5MB.');
+                customAudioFileInput.value = '';
+                if (fileNameDisplay) fileNameDisplay.textContent = 'Belum ada file dipilih';
+                if (previewCustomAudioBtn) previewCustomAudioBtn.disabled = true;
+                uploadedCustomAudioDataUrl = null;
+                return;
+            }
 
-        uploadedCustomAudioName = file.name;
-        fileNameDisplay.textContent = file.name;
+            uploadedCustomAudioName = file.name;
+            if (fileNameDisplay) fileNameDisplay.textContent = file.name;
 
-        const reader = new FileReader();
-        reader.onload = function(event) {
-            uploadedCustomAudioDataUrl = event.target.result;
-            previewCustomAudioBtn.disabled = false;
-            showNotification(`File audio "${file.name}" berhasil diunggah!`);
-        };
-        reader.readAsDataURL(file);
-    });
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                uploadedCustomAudioDataUrl = event.target.result;
+                if (previewCustomAudioBtn) previewCustomAudioBtn.disabled = false;
+                showNotification(`File audio "${file.name}" berhasil diunggah!`);
+            };
+            reader.readAsDataURL(file);
+        });
+    }
 
     // Preview Custom Sound Button
-    previewCustomAudioBtn.addEventListener('click', () => {
-        if (!uploadedCustomAudioDataUrl) return;
+    if (previewCustomAudioBtn) {
+        previewCustomAudioBtn.addEventListener('click', () => {
+            if (!uploadedCustomAudioDataUrl) return;
 
-        if (previewAudioElement && !previewAudioElement.paused) {
-            stopPreviewSound();
-        } else {
-            previewAudioElement = new Audio(uploadedCustomAudioDataUrl);
-            previewAudioElement.play();
-            previewCustomAudioBtn.innerHTML = '<i class="fa-solid fa-square"></i> Stop Test';
-            
-            previewAudioElement.onended = () => {
-                previewCustomAudioBtn.innerHTML = '<i class="fa-solid fa-play"></i> Test Suara';
-            };
-        }
-    });
+            if (previewAudioElement && !previewAudioElement.paused) {
+                stopPreviewSound();
+            } else {
+                previewAudioElement = new Audio(uploadedCustomAudioDataUrl);
+                previewAudioElement.play();
+                previewCustomAudioBtn.innerHTML = '<i class="fa-solid fa-square"></i> Stop Test';
+                
+                previewAudioElement.onended = () => {
+                    previewCustomAudioBtn.innerHTML = '<i class="fa-solid fa-play"></i> Test Suara';
+                };
+            }
+        });
+    }
 
     function stopPreviewSound() {
         if (previewAudioElement) {
@@ -183,32 +225,12 @@ document.addEventListener('DOMContentLoaded', () => {
             previewAudioElement.currentTime = 0;
             previewAudioElement = null;
         }
-        previewCustomAudioBtn.innerHTML = '<i class="fa-solid fa-play"></i> Test Suara';
-    }
-
-    // --- Live Clock & Alarm Monitor Loop ---
-    function updateClock() {
-        const date = new Date();
-        const hours = String(date.getHours()).padStart(2, '0');
-        const minutes = String(date.getMinutes()).padStart(2, '0');
-        const seconds = String(date.getSeconds()).padStart(2, '0');
-        const currentTimeStr = `${hours}:${minutes}:${seconds}`;
-        const currentHHMM = `${hours}:${minutes}`;
-
-        liveClockEl.textContent = currentTimeStr;
-
-        const options = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
-        liveDateEl.textContent = date.toLocaleDateString('id-ID', options);
-
-        if (seconds === '00' && currentHHMM !== lastTriggeredMinute) {
-            checkAndTriggerAlarm(currentHHMM);
+        if (previewCustomAudioBtn) {
+            previewCustomAudioBtn.innerHTML = '<i class="fa-solid fa-play"></i> Test Suara';
         }
     }
 
-    setInterval(updateClock, 1000);
-    updateClock();
-
-    // --- Alarms Management ---
+    // --- Alarms Storage & Render ---
     function saveAlarmsToStorage() {
         try {
             localStorage.setItem('math_alarms', JSON.stringify(alarms));
@@ -220,21 +242,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderAlarmList() {
+        if (!alarmListEl) return;
         alarmListEl.innerHTML = '';
 
         const activeCount = alarms.filter(a => a.active).length;
-        alarmCountBadge.textContent = `${activeCount} Aktif`;
-        if (tabBadgeCount) {
-            tabBadgeCount.textContent = alarms.length;
-        }
+        if (alarmCountBadge) alarmCountBadge.textContent = `${activeCount} Aktif`;
+        if (tabBadgeCount) tabBadgeCount.textContent = alarms.length;
 
         if (alarms.length === 0) {
-            alarmListEl.appendChild(emptyStateEl);
-            emptyStateEl.style.display = 'block';
+            if (emptyStateEl) {
+                alarmListEl.appendChild(emptyStateEl);
+                emptyStateEl.style.display = 'block';
+            }
             return;
         }
 
-        emptyStateEl.style.display = 'none';
+        if (emptyStateEl) emptyStateEl.style.display = 'none';
 
         alarms.forEach(alarm => {
             const item = document.createElement('div');
@@ -306,47 +329,48 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function escapeHtml(str) {
+        if (!str) return '';
         return str.replace(/[&<>"']/g, function(m) {
             return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m];
         });
     }
 
     // Form Submit Event
-    alarmForm.addEventListener('submit', (e) => {
-        e.preventDefault();
+    if (alarmForm) {
+        alarmForm.addEventListener('submit', (e) => {
+            e.preventDefault();
 
-        // Request notification permission if not asked yet
-        if ('Notification' in window && Notification.permission === 'default') {
-            Notification.requestPermission();
-        }
+            if ('Notification' in window && Notification.permission === 'default') {
+                Notification.requestPermission();
+            }
 
-        const selectedSound = alarmSoundSelect.value;
-        if (selectedSound === 'custom' && !uploadedCustomAudioDataUrl) {
-            alert('Silakan pilih file audio kustom terlebih dahulu!');
-            return;
-        }
+            const selectedSound = alarmSoundSelect ? alarmSoundSelect.value : 'pulse';
+            if (selectedSound === 'custom' && !uploadedCustomAudioDataUrl) {
+                alert('Silakan pilih file audio kustom terlebih dahulu!');
+                return;
+            }
 
-        const newAlarm = {
-            id: 'alarm_' + Date.now(),
-            time: alarmTimeInput.value,
-            label: alarmLabelInput.value || 'Alarm Matematika',
-            difficulty: alarmDifficultySelect.value,
-            sound: selectedSound,
-            customAudioDataUrl: selectedSound === 'custom' ? uploadedCustomAudioDataUrl : null,
-            customAudioName: selectedSound === 'custom' ? uploadedCustomAudioName : null,
-            active: true
-        };
+            const newAlarm = {
+                id: 'alarm_' + Date.now(),
+                time: alarmTimeInput ? alarmTimeInput.value : '07:00',
+                label: (alarmLabelInput && alarmLabelInput.value) ? alarmLabelInput.value : 'Bangun Pagi!',
+                difficulty: alarmDifficultySelect ? alarmDifficultySelect.value : 'medium',
+                sound: selectedSound,
+                customAudioDataUrl: selectedSound === 'custom' ? uploadedCustomAudioDataUrl : null,
+                customAudioName: selectedSound === 'custom' ? uploadedCustomAudioName : null,
+                active: true
+            };
 
-        alarms.push(newAlarm);
-        saveAlarmsToStorage();
-        showNotification(`Alarm ${newAlarm.time} berhasil disimpan!`);
-        stopPreviewSound();
+            alarms.push(newAlarm);
+            saveAlarmsToStorage();
+            showNotification(`Alarm ${newAlarm.time} berhasil disimpan!`);
+            stopPreviewSound();
 
-        // Switch to list tab on mobile after adding alarm
-        if (window.innerWidth <= 768 && tabBtnList) {
-            tabBtnList.click();
-        }
-    });
+            if (window.innerWidth <= 768 && tabBtnList) {
+                tabBtnList.click();
+            }
+        });
+    }
 
     // --- Audio Engine (Synthesizer + Custom Audio) ---
     function initAudioContext() {
@@ -502,23 +526,20 @@ document.addEventListener('DOMContentLoaded', () => {
     function triggerAlarm(alarm) {
         currentRingingAlarm = alarm;
         
-        ringingLabelEl.textContent = alarm.label || 'Bangun Pagi!';
-        ringingTimeEl.textContent = alarm.time;
-        challengeDifficultyBadge.textContent = `TINGKAT: ${getDifficultyLabel(alarm.difficulty).toUpperCase()}`;
+        if (ringingLabelEl) ringingLabelEl.textContent = alarm.label || 'Bangun Pagi!';
+        if (ringingTimeEl) ringingTimeEl.textContent = alarm.time;
+        if (challengeDifficultyBadge) challengeDifficultyBadge.textContent = `TINGKAT: ${getDifficultyLabel(alarm.difficulty).toUpperCase()}`;
         
-        feedbackToast.classList.add('hidden');
-        mathAnswerInput.value = '';
+        if (feedbackToast) feedbackToast.classList.add('hidden');
+        if (mathAnswerInput) mathAnswerInput.value = '';
 
         currentProblem = generateMathProblem(alarm.difficulty);
-        mathQuestionTextEl.textContent = currentProblem.questionText;
+        if (mathQuestionTextEl) mathQuestionTextEl.textContent = currentProblem.questionText;
 
-        // Show Modal Overlay immediately
-        alarmModalOverlay.classList.remove('hidden');
+        if (alarmModalOverlay) alarmModalOverlay.classList.remove('hidden');
         
-        // Start Alarm Sound
         startAlarmSound(alarm);
 
-        // System Notification (Service Worker or Standard)
         if ('Notification' in window && Notification.permission === 'granted') {
             const notifTitle = `⏰ ALARM: ${alarm.label || 'Bangun Pagi!'}`;
             const notifOptions = {
@@ -540,84 +561,93 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         setTimeout(() => {
-            mathAnswerInput.focus();
+            if (mathAnswerInput) mathAnswerInput.focus();
         }, 300);
     }
 
     // --- Test Alarm Button Event ---
-    testAlarmNowBtn.addEventListener('click', () => {
-        // Request notification permission if not asked yet
-        if ('Notification' in window && Notification.permission === 'default') {
-            Notification.requestPermission();
-        }
+    if (testAlarmNowBtn) {
+        testAlarmNowBtn.addEventListener('click', () => {
+            if ('Notification' in window && Notification.permission === 'default') {
+                Notification.requestPermission();
+            }
 
-        const selectedSound = alarmSoundSelect.value;
-        const testAlarm = {
-            id: 'test_alarm',
-            time: liveClockEl.textContent.substring(0, 5),
-            label: alarmLabelInput.value || 'Uji Alarm Matematika',
-            difficulty: alarmDifficultySelect.value,
-            sound: selectedSound,
-            customAudioDataUrl: selectedSound === 'custom' ? uploadedCustomAudioDataUrl : null,
-            customAudioName: selectedSound === 'custom' ? uploadedCustomAudioName : null,
-            active: true
-        };
-        triggerAlarm(testAlarm);
-    });
+            const selectedSound = alarmSoundSelect ? alarmSoundSelect.value : 'pulse';
+            const testAlarm = {
+                id: 'test_alarm',
+                time: liveClockEl ? liveClockEl.textContent.substring(0, 5) : '07:00',
+                label: (alarmLabelInput && alarmLabelInput.value) ? alarmLabelInput.value : 'Uji Alarm Matematika',
+                difficulty: alarmDifficultySelect ? alarmDifficultySelect.value : 'medium',
+                sound: selectedSound,
+                customAudioDataUrl: selectedSound === 'custom' ? uploadedCustomAudioDataUrl : null,
+                customAudioName: selectedSound === 'custom' ? uploadedCustomAudioName : null,
+                active: true
+            };
+            triggerAlarm(testAlarm);
+        });
+    }
 
     // --- Math Answer Form Submission Logic ---
-    mathAnswerForm.addEventListener('submit', (e) => {
-        e.preventDefault();
+    if (mathAnswerForm) {
+        mathAnswerForm.addEventListener('submit', (e) => {
+            e.preventDefault();
 
-        const rawValue = mathAnswerInput.value.trim();
+            const rawValue = mathAnswerInput ? mathAnswerInput.value.trim() : '';
 
-        if (rawValue === '') {
-            showFeedback('❌ Belum menjawab! Ketik jawaban Anda. Alarm tetap berbunyi.');
-            shakeCard();
-            mathAnswerInput.focus();
-            return;
-        }
+            if (rawValue === '') {
+                showFeedback('❌ Belum menjawab! Ketik jawaban Anda. Alarm tetap berbunyi.');
+                shakeCard();
+                if (mathAnswerInput) mathAnswerInput.focus();
+                return;
+            }
 
-        const userAnswer = parseInt(rawValue, 10);
+            const userAnswer = parseInt(rawValue, 10);
 
-        if (userAnswer !== currentProblem.answer) {
-            currentProblem = generateMathProblem(currentRingingAlarm ? currentRingingAlarm.difficulty : 'medium');
-            mathQuestionTextEl.textContent = currentProblem.questionText;
-            
-            showFeedback('❌ Jawaban salah! Soal baru muncul, alarm tetap berbunyi.');
-            shakeCard();
-            mathAnswerInput.value = '';
-            mathAnswerInput.focus();
-            return;
-        }
+            if (userAnswer !== currentProblem.answer) {
+                currentProblem = generateMathProblem(currentRingingAlarm ? currentRingingAlarm.difficulty : 'medium');
+                if (mathQuestionTextEl) mathQuestionTextEl.textContent = currentProblem.questionText;
+                
+                showFeedback('❌ Jawaban salah! Soal baru muncul, alarm tetap berbunyi.');
+                shakeCard();
+                if (mathAnswerInput) {
+                    mathAnswerInput.value = '';
+                    mathAnswerInput.focus();
+                }
+                return;
+            }
 
-        stopAlarmSound();
-        alarmModalOverlay.classList.add('hidden');
-        showSuccessModal();
-    });
+            stopAlarmSound();
+            if (alarmModalOverlay) alarmModalOverlay.classList.add('hidden');
+            showSuccessModal();
+        });
+    }
 
     function showFeedback(message) {
-        feedbackText.textContent = message;
-        feedbackToast.classList.remove('hidden');
+        if (feedbackText) feedbackText.textContent = message;
+        if (feedbackToast) feedbackToast.classList.remove('hidden');
     }
 
     function shakeCard() {
+        if (!ringingCard) return;
         ringingCard.classList.remove('shake-anim');
         void ringingCard.offsetWidth;
         ringingCard.classList.add('shake-anim');
     }
 
     function showSuccessModal() {
-        successModalOverlay.classList.remove('hidden');
+        if (successModalOverlay) successModalOverlay.classList.remove('hidden');
     }
 
-    closeSuccessModalBtn.addEventListener('click', () => {
-        successModalOverlay.classList.add('hidden');
-    });
+    if (closeSuccessModalBtn) {
+        closeSuccessModalBtn.addEventListener('click', () => {
+            if (successModalOverlay) successModalOverlay.classList.add('hidden');
+        });
+    }
 
     // --- Toast Notification Helper ---
     function showNotification(message) {
         const toastContainer = document.getElementById('toastContainer');
+        if (!toastContainer) return;
         const toast = document.createElement('div');
         toast.className = 'notification-toast';
         toast.innerHTML = `<i class="fa-solid fa-circle-check"></i> ${escapeHtml(message)}`;
