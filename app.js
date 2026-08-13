@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Math Alarm - Core Logic, Super Easy 24-Hour Time Picker & Service Worker
+   Math Alarm - Core Logic, Native Time Picker & Service Worker
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -12,14 +12,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const alarmDifficultySelect = document.getElementById('alarmDifficulty');
     const alarmSoundSelect = document.getElementById('alarmSound');
     const testAlarmNowBtn = document.getElementById('testAlarmNowBtn');
-
-    // Easy Time Picker Elements
-    const hourInput = document.getElementById('hourInput');
-    const hourIncBtn = document.getElementById('hourIncBtn');
-    const hourDecBtn = document.getElementById('hourDecBtn');
-    const minuteInput = document.getElementById('minuteInput');
-    const minuteIncBtn = document.getElementById('minuteIncBtn');
-    const minuteDecBtn = document.getElementById('minuteDecBtn');
 
     // Notification Banner Elements
     const notifBanner = document.getElementById('notifBanner');
@@ -70,12 +62,14 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentProblem = null;
     let swRegistration = null;
 
-    // Time Picker State (24-Hour Format: 00 to 23 : 00 to 59)
-    const initDate = new Date();
-    initDate.setMinutes(initDate.getMinutes() + 1);
-    
-    let pickerHour = initDate.getHours();    // 0 - 23
-    let pickerMinute = initDate.getMinutes(); // 0 - 59
+    // Set default alarm time input (Current time + 1 Min)
+    if (alarmTimeInput) {
+        const now = new Date();
+        now.setMinutes(now.getMinutes() + 1);
+        const defaultHours = String(now.getHours()).padStart(2, '0');
+        const defaultMinutes = String(now.getMinutes()).padStart(2, '0');
+        alarmTimeInput.value = `${defaultHours}:${defaultMinutes}`;
+    }
 
     // Audio State
     let audioContext = null;
@@ -85,79 +79,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let uploadedCustomAudioName = null;
     let previewAudioElement = null;
     let lastTriggeredMinute = '';
-
-    // --- Super Easy 24-Hour Time Picker Logic ---
-    function syncTimePickerValues() {
-        const pad2 = num => String(num).padStart(2, '0');
-
-        if (hourInput) hourInput.value = pad2(pickerHour);
-        if (minuteInput) minuteInput.value = pad2(pickerMinute);
-
-        if (alarmTimeInput) {
-            alarmTimeInput.value = `${pad2(pickerHour)}:${pad2(pickerMinute)}`;
-        }
-    }
-
-    // Direct Typing Event Listeners
-    if (hourInput) {
-        hourInput.addEventListener('input', () => {
-            let val = parseInt(hourInput.value, 10);
-            if (isNaN(val)) return;
-            if (val > 23) val = 23;
-            if (val < 0) val = 0;
-            pickerHour = val;
-            if (alarmTimeInput) alarmTimeInput.value = `${String(pickerHour).padStart(2, '0')}:${String(pickerMinute).padStart(2, '0')}`;
-        });
-        hourInput.addEventListener('blur', () => {
-            syncTimePickerValues();
-        });
-    }
-
-    if (minuteInput) {
-        minuteInput.addEventListener('input', () => {
-            let val = parseInt(minuteInput.value, 10);
-            if (isNaN(val)) return;
-            if (val > 59) val = 59;
-            if (val < 0) val = 0;
-            pickerMinute = val;
-            if (alarmTimeInput) alarmTimeInput.value = `${String(pickerHour).padStart(2, '0')}:${String(pickerMinute).padStart(2, '0')}`;
-        });
-        minuteInput.addEventListener('blur', () => {
-            syncTimePickerValues();
-        });
-    }
-
-    // Step Buttons (+ / -)
-    if (hourIncBtn) {
-        hourIncBtn.addEventListener('click', () => {
-            pickerHour = pickerHour >= 23 ? 0 : pickerHour + 1;
-            syncTimePickerValues();
-        });
-    }
-
-    if (hourDecBtn) {
-        hourDecBtn.addEventListener('click', () => {
-            pickerHour = pickerHour <= 0 ? 23 : pickerHour - 1;
-            syncTimePickerValues();
-        });
-    }
-
-    if (minuteIncBtn) {
-        minuteIncBtn.addEventListener('click', () => {
-            pickerMinute = pickerMinute >= 59 ? 0 : pickerMinute + 1;
-            syncTimePickerValues();
-        });
-    }
-
-    if (minuteDecBtn) {
-        minuteDecBtn.addEventListener('click', () => {
-            pickerMinute = pickerMinute <= 0 ? 59 : pickerMinute - 1;
-            syncTimePickerValues();
-        });
-    }
-
-    // Initialize custom time picker display
-    syncTimePickerValues();
 
     // --- Live Clock Engine ---
     function updateClock() {
@@ -422,8 +343,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 Notification.requestPermission();
             }
 
-            syncTimePickerValues();
-
             const selectedSound = alarmSoundSelect ? alarmSoundSelect.value : 'radar';
             if (selectedSound === 'custom' && !uploadedCustomAudioDataUrl) {
                 alert('Silakan pilih file audio kustom terlebih dahulu!');
@@ -651,8 +570,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if ('Notification' in window && Notification.permission === 'default') {
                 Notification.requestPermission();
             }
-
-            syncTimePickerValues();
 
             const selectedSound = alarmSoundSelect ? alarmSoundSelect.value : 'radar';
             const testAlarm = {
