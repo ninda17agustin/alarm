@@ -128,18 +128,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
     checkNotificationStatus();
 
+    // Enable Notification Button Click Handler (Handles 'denied' & 'default' states gracefully)
     if (enableNotifBtn) {
         enableNotifBtn.addEventListener('click', () => {
-            if ('Notification' in window) {
-                Notification.requestPermission().then((permission) => {
-                    if (permission === 'granted') {
-                        if (notifBanner) notifBanner.classList.add('hidden');
-                        showNotification('Notifikasi alarm berhasil diaktifkan!');
-                    } else {
-                        alert('Izin notifikasi ditolak. Silakan izinkan di setelan browser HP Anda.');
-                    }
-                });
+            if (!('Notification' in window)) {
+                alert('Browser ini tidak mendukung notifikasi web.');
+                return;
             }
+
+            // If permission is already blocked by user in Chrome
+            if (Notification.permission === 'denied') {
+                alert('Izin Notifikasi DIBLOKIR oleh Browser HP Anda.\n\nCara Membuka Blokir Notifikasi:\n1. Klik ikon Gembok 🔒 atau Setelan di sebelah kiri alamat website di Chrome.\n2. Pilih "Permissions / Izin" -> "Notifications / Notifikasi".\n3. Ubah dari "Block" menjadi "Allow / Izinkan".');
+                return;
+            }
+
+            // Otherwise request permission
+            Notification.requestPermission().then((permission) => {
+                if (permission === 'granted') {
+                    if (notifBanner) notifBanner.classList.add('hidden');
+                    showNotification('Notifikasi alarm berhasil diaktifkan!');
+                } else if (permission === 'denied') {
+                    alert('Izin notifikasi diblokir. Silakan klik ikon gembok 🔒 di sebelah kiri alamat website di Chrome untuk mengizinkan.');
+                }
+            });
         });
     }
 
