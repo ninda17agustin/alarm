@@ -471,17 +471,28 @@ document.addEventListener('DOMContentLoaded', () => {
         currentProblem = generateMathProblem(alarm.difficulty);
         mathQuestionTextEl.textContent = currentProblem.questionText;
 
+        // Show Modal Overlay immediately
         alarmModalOverlay.classList.remove('hidden');
         
+        // Start Alarm Sound
         startAlarmSound(alarm);
+
+        // Try focusing window if browser allows
+        try { window.focus(); } catch(e) {}
 
         // System Notification if tab is in background
         if ('Notification' in window && Notification.permission === 'granted') {
-            new Notification(`⏰ ALARM BERBUNYI: ${alarm.label || 'Bangun Pagi!'}`, {
-                body: `Soal Matematika: ${currentProblem.questionText} - Klik untuk menjawab!`,
+            const notif = new Notification(`⏰ ALARM: ${alarm.label || 'Bangun Pagi!'}`, {
+                body: `Soal: ${currentProblem.questionText}\nTap di sini untuk memasukkan jawaban & mematikan alarm!`,
                 icon: 'https://cdn-icons-png.flaticon.com/512/2972/2972531.png',
+                tag: 'math-alarm-ringing',
                 requireInteraction: true
             });
+
+            notif.onclick = function() {
+                try { window.focus(); } catch(e) {}
+                this.close();
+            };
         }
 
         setTimeout(() => {
