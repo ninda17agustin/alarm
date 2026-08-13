@@ -8,22 +8,22 @@
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="app-container">
-        <!-- Compact Header & Live Clock -->
+        <!-- Header & Live Digital Clock -->
         <header class="app-header">
             <div class="logo">
-                <i class="fa-solid fa-calculator logo-icon"></i>
+                <i class="fa-solid fa-clock-check logo-icon"></i>
                 <h1>Math<span>Alarm</span></h1>
             </div>
             <div class="live-clock-card">
                 <div class="clock-display" id="liveClock">00:00:00</div>
-                <div class="date-display" id="liveDate">Kamis, 13 Agustus 2026</div>
+                <div class="date-display" id="liveDate">Kamis, 13 Agustus</div>
             </div>
         </header>
 
@@ -31,7 +31,7 @@
         <div class="notification-banner hidden" id="notifBanner">
             <div class="notif-banner-content">
                 <i class="fa-solid fa-bell-ring notif-icon"></i>
-                <span>Aktifkan notifikasi HP agar alarm & soal matematika dapat berbunyi & muncul di layar!</span>
+                <span>Aktifkan notifikasi HP agar alarm & soal matematika berbunyi & muncul di layar!</span>
             </div>
             <button type="button" class="btn btn-sm btn-primary" id="enableNotifBtn">
                 <i class="fa-solid fa-check-double"></i> Aktifkan Notifikasi
@@ -44,46 +44,67 @@
                 <i class="fa-solid fa-plus-circle"></i> Buat Alarm
             </button>
             <button class="tab-btn" id="tabBtnList" data-target="listCard">
-                <i class="fa-solid fa-list-check"></i> Daftar Alarm <span class="tab-badge" id="tabBadgeCount">0</span>
+                <i class="fa-solid fa-list-check"></i> Alarm Tersimpan <span class="tab-badge" id="tabBadgeCount">0</span>
             </button>
         </div>
 
         <!-- Main Dashboard Grid -->
         <main class="dashboard-grid">
-            <!-- Left Panel: Create Alarm Form -->
+            <!-- Left Panel: Set Alarm Time Form -->
             <section class="card form-card active-tab" id="formCard">
                 <div class="card-header">
-                    <h2><i class="fa-solid fa-circle-plus"></i> Setel Waktu Alarm</h2>
+                    <h2>Set Alarm Time (24 Jam)</h2>
                 </div>
                 <form id="alarmForm" class="alarm-form">
-                    <div class="form-group time-input-group">
-                        <label for="alarmTime"><i class="fa-regular fa-clock"></i> Waktu Alarm</label>
-                        <input type="time" id="alarmTime" required class="custom-time-input">
+                    <!-- Super Easy 24-Hour Time Picker with Direct Typing & +/- Buttons -->
+                    <div class="easy-time-picker">
+                        <div class="time-field">
+                            <button type="button" class="btn-time-step" id="hourDecBtn" title="Kurangi Jam"><i class="fa-solid fa-minus"></i></button>
+                            <input type="number" id="hourInput" min="0" max="23" value="16" class="time-num-input" placeholder="00" aria-label="Jam">
+                            <button type="button" class="btn-time-step" id="hourIncBtn" title="Tambah Jam"><i class="fa-solid fa-plus"></i></button>
+                        </div>
+                        <span class="time-colon">:</span>
+                        <div class="time-field">
+                            <button type="button" class="btn-time-step" id="minuteDecBtn" title="Kurangi Menit"><i class="fa-solid fa-minus"></i></button>
+                            <input type="number" id="minuteInput" min="0" max="59" value="00" class="time-num-input" placeholder="00" aria-label="Menit">
+                            <button type="button" class="btn-time-step" id="minuteIncBtn" title="Tambah Menit"><i class="fa-solid fa-plus"></i></button>
+                        </div>
+                    </div>
+                    <!-- Hidden time value keeper (HH:MM 24h format) -->
+                    <input type="hidden" id="alarmTime" value="16:00">
+
+                    <div class="form-group">
+                        <label for="alarmLabel">Label Alarm</label>
+                        <div class="input-with-icon">
+                            <i class="fa-regular fa-square-full input-icon-left"></i>
+                            <input type="text" id="alarmLabel" placeholder="e.g. Bangun Pagi!" class="custom-text-input" value="Bangun Pagi!">
+                        </div>
                     </div>
 
                     <div class="form-group">
-                        <label for="alarmLabel"><i class="fa-solid fa-tag"></i> Label Alarm</label>
-                        <input type="text" id="alarmLabel" placeholder="Contoh: Bangun Subuh / Kuliah Pagi" class="custom-text-input" value="Bangun Pagi!">
+                        <label for="alarmDifficulty">Tingkat Kesulitan Soal</label>
+                        <div class="input-with-icon">
+                            <i class="fa-solid fa-calculator input-icon-left"></i>
+                            <select id="alarmDifficulty" class="custom-select">
+                                <option value="easy">Mudah (1 Digit)</option>
+                                <option value="medium" selected>Sedang (2 Digit)</option>
+                                <option value="hard">Sulit (Perkalian/Pembagian)</option>
+                            </select>
+                        </div>
                     </div>
 
                     <div class="form-group">
-                        <label for="alarmDifficulty"><i class="fa-solid fa-brain"></i> Tingkat Kesulitan Soal</label>
-                        <select id="alarmDifficulty" class="custom-select">
-                            <option value="easy">Mudah (Penjumlahan & Pengurangan)</option>
-                            <option value="medium" selected>Sedang (Penjumlahan, Pengurangan & Perkalian)</option>
-                            <option value="hard">Sulit (Perkalian & Pembagian Kompleks)</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="alarmSound"><i class="fa-solid fa-music"></i> Suara Alarm</label>
-                        <select id="alarmSound" class="custom-select">
-                            <option value="siren">Cyber Siren (Nyaring & Agresif)</option>
-                            <option value="pulse" selected>Digital Pulse (Enerjik)</option>
-                            <option value="radar">Radar Wave (Pemberontak)</option>
-                            <option value="bell">Electronic Bell (Klasik)</option>
-                            <option value="custom">🎵 Unggah Suara/Musik Sendiri (MP3 / WAV)...</option>
-                        </select>
+                        <label for="alarmSound">Suara Alarm</label>
+                        <div class="input-with-icon">
+                            <i class="fa-solid fa-music input-icon-left"></i>
+                            <select id="alarmSound" class="custom-select">
+                                <option value="radar" selected>Radar (Default)</option>
+                                <option value="pulse">Digital Pulse (Enerjik)</option>
+                                <option value="siren">Cyber Siren (Nyaring)</option>
+                                <option value="bell">Electronic Bell (Klasik)</option>
+                                <option value="custom">🎵 Unggah Suara/Musik Sendiri (MP3 / WAV)...</option>
+                            </select>
+                        </div>
                     </div>
 
                     <!-- Custom Audio File Upload Container (Hidden by default) -->
@@ -114,7 +135,7 @@
             <!-- Right Panel: Saved Alarms List -->
             <section class="card list-card" id="listCard">
                 <div class="card-header">
-                    <h2><i class="fa-solid fa-list-check"></i> Alarm Tersimpan</h2>
+                    <h2>Daftar Alarm Tersimpan</h2>
                     <span class="badge" id="alarmCountBadge">0 Aktif</span>
                 </div>
                 <div class="alarm-list" id="alarmList">
