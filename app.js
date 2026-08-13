@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Math Alarm - Core Logic, Web Audio Engine & Custom Audio Upload
+   Math Alarm - Core Logic, Web Audio Engine, Custom Audio Upload & Mobile Tabs
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -12,6 +12,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const alarmDifficultySelect = document.getElementById('alarmDifficulty');
     const alarmSoundSelect = document.getElementById('alarmSound');
     const testAlarmNowBtn = document.getElementById('testAlarmNowBtn');
+
+    // Mobile Tab Elements
+    const tabBtnForm = document.getElementById('tabBtnForm');
+    const tabBtnList = document.getElementById('tabBtnList');
+    const formCard = document.getElementById('formCard');
+    const listCard = document.getElementById('listCard');
+    const tabBadgeCount = document.getElementById('tabBadgeCount');
 
     // Custom Audio Elements
     const customAudioGroup = document.getElementById('customAudioGroup');
@@ -60,6 +67,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const defaultMinutes = String(now.getMinutes()).padStart(2, '0');
     alarmTimeInput.value = `${defaultHours}:${defaultMinutes}`;
 
+    // --- Mobile Tab Switching Logic ---
+    if (tabBtnForm && tabBtnList) {
+        tabBtnForm.addEventListener('click', () => {
+            tabBtnForm.classList.add('active');
+            tabBtnList.classList.remove('active');
+            formCard.classList.add('active-tab');
+            listCard.classList.remove('active-tab');
+        });
+
+        tabBtnList.addEventListener('click', () => {
+            tabBtnList.classList.add('active');
+            tabBtnForm.classList.remove('active');
+            listCard.classList.add('active-tab');
+            formCard.classList.remove('active-tab');
+        });
+    }
+
     // --- Custom Audio Input Change Handler ---
     alarmSoundSelect.addEventListener('change', () => {
         if (alarmSoundSelect.value === 'custom') {
@@ -74,7 +98,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const file = e.target.files[0];
         if (!file) return;
 
-        // Check file size (limit to 5MB for LocalStorage safety)
         if (file.size > 5 * 1024 * 1024) {
             alert('Ukuran file audio terlalu besar! Maksimal 5MB.');
             customAudioFileInput.value = '';
@@ -160,6 +183,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const activeCount = alarms.filter(a => a.active).length;
         alarmCountBadge.textContent = `${activeCount} Aktif`;
+        if (tabBadgeCount) {
+            tabBadgeCount.textContent = alarms.length;
+        }
 
         if (alarms.length === 0) {
             alarmListEl.appendChild(emptyStateEl);
@@ -269,6 +295,11 @@ document.addEventListener('DOMContentLoaded', () => {
         saveAlarmsToStorage();
         showNotification(`Alarm ${newAlarm.time} berhasil disimpan!`);
         stopPreviewSound();
+
+        // Switch to list tab on mobile after adding alarm
+        if (window.innerWidth <= 768 && tabBtnList) {
+            tabBtnList.click();
+        }
     });
 
     // --- Audio Engine (Synthesizer + Custom Audio) ---
@@ -283,9 +314,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function startAlarmSound(alarm) {
-        stopAlarmSound(); // Stop any currently playing audio
+        stopAlarmSound();
 
-        // Check if alarm uses Custom Uploaded Audio
         if (alarm.sound === 'custom' && alarm.customAudioDataUrl) {
             customAudioElement = new Audio(alarm.customAudioDataUrl);
             customAudioElement.loop = true;
@@ -294,7 +324,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 startSynthesizedSound('siren');
             });
         } else {
-            // Use Web Audio Synthesizer preset
             startSynthesizedSound(alarm.sound || 'pulse');
         }
     }
@@ -439,7 +468,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         alarmModalOverlay.classList.remove('hidden');
         
-        // Start Alarm Sound (Custom or Synthesizer)
         startAlarmSound(alarm);
 
         setTimeout(() => {
@@ -469,7 +497,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const rawValue = mathAnswerInput.value.trim();
 
-        // ❌ BELUM MENJAWAB
         if (rawValue === '') {
             showFeedback('❌ Belum menjawab! Ketik jawaban Anda. Alarm tetap berbunyi.');
             shakeCard();
@@ -479,7 +506,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const userAnswer = parseInt(rawValue, 10);
 
-        // ❌ JAWABAN SALAH -> SOAL BARU MUNCUL, ALARM TETAP BERBUNYI
         if (userAnswer !== currentProblem.answer) {
             currentProblem = generateMathProblem(currentRingingAlarm ? currentRingingAlarm.difficulty : 'medium');
             mathQuestionTextEl.textContent = currentProblem.questionText;
@@ -491,7 +517,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // ✅ JAWABAN BENAR -> ALARM BERHENTI, TAMPILKAN BERHASIL
         stopAlarmSound();
         alarmModalOverlay.classList.add('hidden');
         showSuccessModal();
