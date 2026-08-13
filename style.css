@@ -53,7 +53,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1.25rem;
+    margin-bottom: 1rem;
     padding: 1.25rem 1.5rem;
     background: var(--bg-card);
     backdrop-filter: blur(16px);
@@ -106,9 +106,36 @@ body {
     font-weight: 400;
 }
 
+/* Notification Permission Banner */
+.notification-banner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(245, 158, 11, 0.15);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    border-radius: 16px;
+    padding: 0.85rem 1.25rem;
+    margin-bottom: 1.25rem;
+    gap: 1rem;
+    backdrop-filter: blur(10px);
+}
+
+.notif-banner-content {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.88rem;
+    color: #fef3c7;
+}
+
+.notif-icon {
+    font-size: 1.4rem;
+    color: var(--accent-amber);
+}
+
 /* Mobile Tab Switcher Bar */
 .mobile-tab-bar {
-    display: none; /* Hidden by default on Desktop */
+    display: none;
     gap: 0.5rem;
     margin-bottom: 1.25rem;
     background: rgba(18, 24, 40, 0.7);
@@ -402,6 +429,12 @@ body {
 
 .btn-block {
     width: 100%;
+}
+
+.btn-sm {
+    padding: 0.45rem 0.85rem;
+    font-size: 0.82rem;
+    border-radius: 10px;
 }
 
 .btn-lg {
@@ -834,6 +867,18 @@ input:checked + .slider:before {
         border-radius: 16px;
     }
 
+    .notification-banner {
+        flex-direction: column;
+        align-items: stretch;
+        text-align: center;
+        padding: 0.75rem;
+    }
+
+    .notif-banner-content {
+        flex-direction: column;
+        gap: 0.4rem;
+    }
+
     .logo-icon {
         font-size: 1.6rem;
     }
@@ -851,7 +896,6 @@ input:checked + .slider:before {
         font-size: 0.78rem;
     }
 
-    /* Show Mobile Tab Bar */
     .mobile-tab-bar {
         display: flex;
     }
@@ -861,7 +905,6 @@ input:checked + .slider:before {
         gap: 1rem;
     }
 
-    /* Hide unselected card on mobile view based on tab state */
     .card {
         display: none;
         padding: 1.1rem;
