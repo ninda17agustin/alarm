@@ -53,28 +53,17 @@
             <!-- Left Panel: Set Alarm Time Form -->
             <section class="card form-card active-tab" id="formCard">
                 <div class="card-header">
-                    <h2>Set Alarm Time (24 Jam)</h2>
+                    <h2>Buat Alarm Baru</h2>
                 </div>
                 <form id="alarmForm" class="alarm-form">
-                    <!-- Super Easy 24-Hour Time Picker with Direct Typing & +/- Buttons -->
-                    <div class="easy-time-picker">
-                        <div class="time-field">
-                            <button type="button" class="btn-time-step" id="hourDecBtn" title="Kurangi Jam"><i class="fa-solid fa-minus"></i></button>
-                            <input type="number" id="hourInput" min="0" max="23" value="16" class="time-num-input" placeholder="00" aria-label="Jam">
-                            <button type="button" class="btn-time-step" id="hourIncBtn" title="Tambah Jam"><i class="fa-solid fa-plus"></i></button>
-                        </div>
-                        <span class="time-colon">:</span>
-                        <div class="time-field">
-                            <button type="button" class="btn-time-step" id="minuteDecBtn" title="Kurangi Menit"><i class="fa-solid fa-minus"></i></button>
-                            <input type="number" id="minuteInput" min="0" max="59" value="00" class="time-num-input" placeholder="00" aria-label="Menit">
-                            <button type="button" class="btn-time-step" id="minuteIncBtn" title="Tambah Menit"><i class="fa-solid fa-plus"></i></button>
-                        </div>
+                    <!-- Clean Native Time Input Field -->
+                    <div class="form-group">
+                        <label for="alarmTime"><i class="fa-regular fa-clock"></i> WAKTU ALARM</label>
+                        <input type="time" id="alarmTime" required class="custom-time-input">
                     </div>
-                    <!-- Hidden time value keeper (HH:MM 24h format) -->
-                    <input type="hidden" id="alarmTime" value="16:00">
 
                     <div class="form-group">
-                        <label for="alarmLabel">Label Alarm</label>
+                        <label for="alarmLabel"><i class="fa-solid fa-tag"></i> Label Alarm</label>
                         <div class="input-with-icon">
                             <i class="fa-regular fa-square-full input-icon-left"></i>
                             <input type="text" id="alarmLabel" placeholder="e.g. Bangun Pagi!" class="custom-text-input" value="Bangun Pagi!">
@@ -82,7 +71,7 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="alarmDifficulty">Tingkat Kesulitan Soal</label>
+                        <label for="alarmDifficulty"><i class="fa-solid fa-brain"></i> Tingkat Kesulitan Soal</label>
                         <div class="input-with-icon">
                             <i class="fa-solid fa-calculator input-icon-left"></i>
                             <select id="alarmDifficulty" class="custom-select">
@@ -94,7 +83,7 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="alarmSound">Suara Alarm</label>
+                        <label for="alarmSound"><i class="fa-solid fa-music"></i> Suara Alarm</label>
                         <div class="input-with-icon">
                             <i class="fa-solid fa-music input-icon-left"></i>
                             <select id="alarmSound" class="custom-select">
