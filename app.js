@@ -60,6 +60,11 @@ document.addEventListener('DOMContentLoaded', () => {
     let previewAudioElement = null;
     let lastTriggeredMinute = '';
 
+    // Request System Notification Permission on load
+    if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+    }
+
     // Set default time input to current time + 1 min
     const now = new Date();
     now.setMinutes(now.getMinutes() + 1);
@@ -469,6 +474,15 @@ document.addEventListener('DOMContentLoaded', () => {
         alarmModalOverlay.classList.remove('hidden');
         
         startAlarmSound(alarm);
+
+        // System Notification if tab is in background
+        if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification(`⏰ ALARM BERBUNYI: ${alarm.label || 'Bangun Pagi!'}`, {
+                body: `Soal Matematika: ${currentProblem.questionText} - Klik untuk menjawab!`,
+                icon: 'https://cdn-icons-png.flaticon.com/512/2972/2972531.png',
+                requireInteraction: true
+            });
+        }
 
         setTimeout(() => {
             mathAnswerInput.focus();
