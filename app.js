@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Math Alarm - Core Logic, Web Audio Engine, Service Worker Notifications & Mobile Tabs
+   Math Alarm - Core Logic, Super Easy 24-Hour Time Picker & Service Worker
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -12,6 +12,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const alarmDifficultySelect = document.getElementById('alarmDifficulty');
     const alarmSoundSelect = document.getElementById('alarmSound');
     const testAlarmNowBtn = document.getElementById('testAlarmNowBtn');
+
+    // Easy Time Picker Elements
+    const hourInput = document.getElementById('hourInput');
+    const hourIncBtn = document.getElementById('hourIncBtn');
+    const hourDecBtn = document.getElementById('hourDecBtn');
+    const minuteInput = document.getElementById('minuteInput');
+    const minuteIncBtn = document.getElementById('minuteIncBtn');
+    const minuteDecBtn = document.getElementById('minuteDecBtn');
 
     // Notification Banner Elements
     const notifBanner = document.getElementById('notifBanner');
@@ -62,6 +70,13 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentProblem = null;
     let swRegistration = null;
 
+    // Time Picker State (24-Hour Format: 00 to 23 : 00 to 59)
+    const initDate = new Date();
+    initDate.setMinutes(initDate.getMinutes() + 1);
+    
+    let pickerHour = initDate.getHours();    // 0 - 23
+    let pickerMinute = initDate.getMinutes(); // 0 - 59
+
     // Audio State
     let audioContext = null;
     let alarmSoundInterval = null;
@@ -71,7 +86,80 @@ document.addEventListener('DOMContentLoaded', () => {
     let previewAudioElement = null;
     let lastTriggeredMinute = '';
 
-    // --- Live Clock Engine (Fires immediately) ---
+    // --- Super Easy 24-Hour Time Picker Logic ---
+    function syncTimePickerValues() {
+        const pad2 = num => String(num).padStart(2, '0');
+
+        if (hourInput) hourInput.value = pad2(pickerHour);
+        if (minuteInput) minuteInput.value = pad2(pickerMinute);
+
+        if (alarmTimeInput) {
+            alarmTimeInput.value = `${pad2(pickerHour)}:${pad2(pickerMinute)}`;
+        }
+    }
+
+    // Direct Typing Event Listeners
+    if (hourInput) {
+        hourInput.addEventListener('input', () => {
+            let val = parseInt(hourInput.value, 10);
+            if (isNaN(val)) return;
+            if (val > 23) val = 23;
+            if (val < 0) val = 0;
+            pickerHour = val;
+            if (alarmTimeInput) alarmTimeInput.value = `${String(pickerHour).padStart(2, '0')}:${String(pickerMinute).padStart(2, '0')}`;
+        });
+        hourInput.addEventListener('blur', () => {
+            syncTimePickerValues();
+        });
+    }
+
+    if (minuteInput) {
+        minuteInput.addEventListener('input', () => {
+            let val = parseInt(minuteInput.value, 10);
+            if (isNaN(val)) return;
+            if (val > 59) val = 59;
+            if (val < 0) val = 0;
+            pickerMinute = val;
+            if (alarmTimeInput) alarmTimeInput.value = `${String(pickerHour).padStart(2, '0')}:${String(pickerMinute).padStart(2, '0')}`;
+        });
+        minuteInput.addEventListener('blur', () => {
+            syncTimePickerValues();
+        });
+    }
+
+    // Step Buttons (+ / -)
+    if (hourIncBtn) {
+        hourIncBtn.addEventListener('click', () => {
+            pickerHour = pickerHour >= 23 ? 0 : pickerHour + 1;
+            syncTimePickerValues();
+        });
+    }
+
+    if (hourDecBtn) {
+        hourDecBtn.addEventListener('click', () => {
+            pickerHour = pickerHour <= 0 ? 23 : pickerHour - 1;
+            syncTimePickerValues();
+        });
+    }
+
+    if (minuteIncBtn) {
+        minuteIncBtn.addEventListener('click', () => {
+            pickerMinute = pickerMinute >= 59 ? 0 : pickerMinute + 1;
+            syncTimePickerValues();
+        });
+    }
+
+    if (minuteDecBtn) {
+        minuteDecBtn.addEventListener('click', () => {
+            pickerMinute = pickerMinute <= 0 ? 59 : pickerMinute - 1;
+            syncTimePickerValues();
+        });
+    }
+
+    // Initialize custom time picker display
+    syncTimePickerValues();
+
+    // --- Live Clock Engine ---
     function updateClock() {
         const date = new Date();
         const hours = String(date.getHours()).padStart(2, '0');
@@ -85,7 +173,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (liveDateEl) {
-            const options = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+            const options = { weekday: 'long', day: 'numeric', month: 'long' };
             liveDateEl.textContent = date.toLocaleDateString('id-ID', options);
         }
 
@@ -94,18 +182,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Run clock immediately and start interval
     updateClock();
     setInterval(updateClock, 1000);
-
-    // --- Set Default Alarm Time (Current Time + 1 Min) ---
-    if (alarmTimeInput) {
-        const now = new Date();
-        now.setMinutes(now.getMinutes() + 1);
-        const defaultHours = String(now.getHours()).padStart(2, '0');
-        const defaultMinutes = String(now.getMinutes()).padStart(2, '0');
-        alarmTimeInput.value = `${defaultHours}:${defaultMinutes}`;
-    }
 
     // --- Service Worker Registration ---
     if ('serviceWorker' in navigator) {
@@ -312,17 +390,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function getDifficultyLabel(diff) {
         switch(diff) {
-            case 'easy': return 'Mudah';
+            case 'easy': return 'Mudah (1 Digit)';
             case 'hard': return 'Sulit';
-            default: return 'Sedang';
+            default: return 'Sedang (2 Digit)';
         }
     }
 
     function getSoundName(sound) {
         switch(sound) {
+            case 'radar': return 'Radar (Default)';
             case 'siren': return 'Cyber Siren';
             case 'pulse': return 'Digital Pulse';
-            case 'radar': return 'Radar Wave';
             case 'bell': return 'Electronic Bell';
             default: return 'Custom Audio';
         }
@@ -344,7 +422,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 Notification.requestPermission();
             }
 
-            const selectedSound = alarmSoundSelect ? alarmSoundSelect.value : 'pulse';
+            syncTimePickerValues();
+
+            const selectedSound = alarmSoundSelect ? alarmSoundSelect.value : 'radar';
             if (selectedSound === 'custom' && !uploadedCustomAudioDataUrl) {
                 alert('Silakan pilih file audio kustom terlebih dahulu!');
                 return;
@@ -391,10 +471,10 @@ document.addEventListener('DOMContentLoaded', () => {
             customAudioElement.loop = true;
             customAudioElement.play().catch(err => {
                 console.warn('Custom audio playback error, falling back to synthesizer:', err);
-                startSynthesizedSound('siren');
+                startSynthesizedSound('radar');
             });
         } else {
-            startSynthesizedSound(alarm.sound || 'pulse');
+            startSynthesizedSound(alarm.sound || 'radar');
         }
     }
 
@@ -411,7 +491,15 @@ document.addEventListener('DOMContentLoaded', () => {
             osc.connect(gain);
             gain.connect(audioContext.destination);
 
-            if (type === 'siren') {
+            if (type === 'radar') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(400, now);
+                osc.frequency.exponentialRampToValueAtTime(1200, now + 0.4);
+                gain.gain.setValueAtTime(0.35, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.45);
+                osc.start(now);
+                osc.stop(now + 0.45);
+            } else if (type === 'siren') {
                 const freq = (step % 2 === 0) ? 880 : 440;
                 osc.type = 'sawtooth';
                 osc.frequency.setValueAtTime(freq, now);
@@ -426,14 +514,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
                 osc.start(now);
                 osc.stop(now + 0.15);
-            } else if (type === 'radar') {
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(400, now);
-                osc.frequency.exponentialRampToValueAtTime(1200, now + 0.4);
-                gain.gain.setValueAtTime(0.35, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.45);
-                osc.start(now);
-                osc.stop(now + 0.45);
             } else { // bell
                 osc.type = 'triangle';
                 osc.frequency.setValueAtTime(600, now);
@@ -466,8 +546,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (difficulty === 'easy') {
             const ops = ['+', '-'];
             operator = ops[Math.floor(Math.random() * ops.length)];
-            num1 = Math.floor(Math.random() * 40) + 10;
-            num2 = Math.floor(Math.random() * 30) + 5;
+            num1 = Math.floor(Math.random() * 9) + 1;
+            num2 = Math.floor(Math.random() * 9) + 1;
 
             if (operator === '-') {
                 if (num1 < num2) [num1, num2] = [num2, num1];
@@ -488,7 +568,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 answer = Math.floor(Math.random() * 12) + 3;
                 num1 = num2 * answer;
             }
-        } else { // Medium (Default)
+        } else { // Medium (Default 2 digit)
             const ops = ['+', '-', 'x'];
             operator = ops[Math.floor(Math.random() * ops.length)];
 
@@ -572,7 +652,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 Notification.requestPermission();
             }
 
-            const selectedSound = alarmSoundSelect ? alarmSoundSelect.value : 'pulse';
+            syncTimePickerValues();
+
+            const selectedSound = alarmSoundSelect ? alarmSoundSelect.value : 'radar';
             const testAlarm = {
                 id: 'test_alarm',
                 time: liveClockEl ? liveClockEl.textContent.substring(0, 5) : '07:00',
