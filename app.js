@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Math Alarm - Core Logic, Native Time Picker & Service Worker
+   Math Alarm - Core Logic, Native Time Picker & Ultra-Robust Notifications
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -115,7 +115,27 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- Notification Status Check ---
+    // --- Robust Cross-Browser Notification Permission Helper ---
+    function requestNotificationPermission() {
+        return new Promise((resolve) => {
+            if (!('Notification' in window)) {
+                resolve('unsupported');
+                return;
+            }
+            try {
+                const permissionPromise = Notification.requestPermission((result) => {
+                    resolve(result);
+                });
+                if (permissionPromise && typeof permissionPromise.then === 'function') {
+                    permissionPromise.then(resolve);
+                }
+            } catch (e) {
+                resolve(Notification.permission);
+            }
+        });
+    }
+
+    // Check Notification Status
     function checkNotificationStatus() {
         if ('Notification' in window && notifBanner) {
             if (Notification.permission !== 'granted') {
@@ -128,29 +148,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     checkNotificationStatus();
 
-    // Enable Notification Button Click Handler (Handles 'denied' & 'default' states gracefully)
+    // Enable Notification Button Click Handler
     if (enableNotifBtn) {
-        enableNotifBtn.addEventListener('click', () => {
+        enableNotifBtn.addEventListener('click', async () => {
             if (!('Notification' in window)) {
-                alert('Browser ini tidak mendukung notifikasi web.');
+                alert('Browser HP Anda tidak mendukung fitur Notifikasi Web.');
                 return;
             }
 
-            // If permission is already blocked by user in Chrome
             if (Notification.permission === 'denied') {
-                alert('Izin Notifikasi DIBLOKIR oleh Browser HP Anda.\n\nCara Membuka Blokir Notifikasi:\n1. Klik ikon Gembok 🔒 atau Setelan di sebelah kiri alamat website di Chrome.\n2. Pilih "Permissions / Izin" -> "Notifications / Notifikasi".\n3. Ubah dari "Block" menjadi "Allow / Izinkan".');
+                alert('Izin Notifikasi DIBLOKIR oleh Browser HP Anda.\n\nCara Membuka Blokir Notifikasi di Chrome:\n1. Klik ikon Gembok 🔒 di sebelah kiri alamat website di Chrome.\n2. Pilih "Permissions / Izin" -> "Notifications / Notifikasi".\n3. Ubah dari "Block" menjadi "Allow / Izinkan".');
                 return;
             }
 
-            // Otherwise request permission
-            Notification.requestPermission().then((permission) => {
-                if (permission === 'granted') {
-                    if (notifBanner) notifBanner.classList.add('hidden');
-                    showNotification('Notifikasi alarm berhasil diaktifkan!');
-                } else if (permission === 'denied') {
-                    alert('Izin notifikasi diblokir. Silakan klik ikon gembok 🔒 di sebelah kiri alamat website di Chrome untuk mengizinkan.');
-                }
-            });
+            const permission = await requestNotificationPermission();
+            if (permission === 'granted') {
+                if (notifBanner) notifBanner.classList.add('hidden');
+                showNotification('Notifikasi alarm berhasil diaktifkan!');
+            } else if (permission === 'denied') {
+                alert('Izin notifikasi diblokir. Silakan klik ikon gembok 🔒 di sebelah kiri alamat website di Chrome untuk mengizinkan.');
+            }
         });
     }
 
@@ -347,11 +364,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Form Submit Event
     if (alarmForm) {
-        alarmForm.addEventListener('submit', (e) => {
+        alarmForm.addEventListener('submit', async (e) => {
             e.preventDefault();
 
             if ('Notification' in window && Notification.permission === 'default') {
-                Notification.requestPermission();
+                await requestNotificationPermission();
             }
 
             const selectedSound = alarmSoundSelect ? alarmSoundSelect.value : 'radar';
@@ -382,7 +399,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- Audio Engine (Synthesizer + Custom Audio) ---
+    // --- Audio Engine & Hardware Vibration (Synthesizer + Custom Audio) ---
     function initAudioContext() {
         if (!audioContext) {
             const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -395,6 +412,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function startAlarmSound(alarm) {
         stopAlarmSound();
+
+        // Trigger hardware vibration on mobile phones
+        if ('vibrate' in navigator) {
+            try {
+                navigator.vibrate([500, 250, 500, 250, 500, 250, 500]);
+            } catch (e) {}
+        }
 
         if (alarm.sound === 'custom' && alarm.customAudioDataUrl) {
             customAudioElement = new Audio(alarm.customAudioDataUrl);
@@ -466,6 +490,11 @@ document.addEventListener('DOMContentLoaded', () => {
             customAudioElement.pause();
             customAudioElement.currentTime = 0;
             customAudioElement = null;
+        }
+        if ('vibrate' in navigator) {
+            try {
+                navigator.vibrate(0);
+            } catch (e) {}
         }
     }
 
@@ -556,6 +585,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: `Soal: ${currentProblem.questionText}\nTap di sini untuk menjawab & mematikan alarm!`,
                 icon: 'https://cdn-icons-png.flaticon.com/512/2972/2972531.png',
                 tag: 'math-alarm-ringing',
+                vibrate: [500, 250, 500, 250, 500],
                 requireInteraction: true
             };
 
@@ -577,9 +607,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Test Alarm Button Event ---
     if (testAlarmNowBtn) {
-        testAlarmNowBtn.addEventListener('click', () => {
+        testAlarmNowBtn.addEventListener('click', async () => {
             if ('Notification' in window && Notification.permission === 'default') {
-                Notification.requestPermission();
+                await requestNotificationPermission();
             }
 
             const selectedSound = alarmSoundSelect ? alarmSoundSelect.value : 'radar';
