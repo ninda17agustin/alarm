@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Math Alarm - Core Logic, Web Audio Engine, Custom Audio Upload & Mobile Tabs
+   Math Alarm - Core Logic, Web Audio Engine, Service Worker Notifications & Mobile Tabs
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -12,6 +12,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const alarmDifficultySelect = document.getElementById('alarmDifficulty');
     const alarmSoundSelect = document.getElementById('alarmSound');
     const testAlarmNowBtn = document.getElementById('testAlarmNowBtn');
+
+    // Notification Banner Elements
+    const notifBanner = document.getElementById('notifBanner');
+    const enableNotifBtn = document.getElementById('enableNotifBtn');
 
     // Mobile Tab Elements
     const tabBtnForm = document.getElementById('tabBtnForm');
@@ -50,7 +54,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let alarms = JSON.parse(localStorage.getItem('math_alarms')) || [];
     let currentRingingAlarm = null;
     let currentProblem = null;
-    
+    let swRegistration = null;
+
     // Audio State
     let audioContext = null;
     let alarmSoundInterval = null;
@@ -60,10 +65,41 @@ document.addEventListener('DOMContentLoaded', () => {
     let previewAudioElement = null;
     let lastTriggeredMinute = '';
 
-    // Request System Notification Permission on load
-    if ('Notification' in window && Notification.permission === 'default') {
-        Notification.requestPermission();
+    // Register Service Worker for Mobile Background Notifications
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js').then((reg) => {
+            swRegistration = reg;
+            console.log('Service Worker registered successfully:', reg.scope);
+        }).catch((err) => {
+            console.warn('Service Worker registration failed:', err);
+        });
     }
+
+    // Check Notification Permission
+    function checkNotificationStatus() {
+        if ('Notification' in window) {
+            if (Notification.permission !== 'granted') {
+                notifBanner.classList.remove('hidden');
+            } else {
+                notifBanner.classList.add('hidden');
+            }
+        }
+    }
+
+    checkNotificationStatus();
+
+    enableNotifBtn.addEventListener('click', () => {
+        if ('Notification' in window) {
+            Notification.requestPermission().then((permission) => {
+                if (permission === 'granted') {
+                    notifBanner.classList.add('hidden');
+                    showNotification('Notifikasi alarm berhasil diaktifkan!');
+                } else {
+                    alert('Izin notifikasi ditolak. Anda perlu mengizinkan notifikasi di setelan Chrome HP Anda.');
+                }
+            });
+        }
+    });
 
     // Set default time input to current time + 1 min
     const now = new Date();
@@ -279,6 +315,11 @@ document.addEventListener('DOMContentLoaded', () => {
     alarmForm.addEventListener('submit', (e) => {
         e.preventDefault();
 
+        // Request notification permission if not asked yet
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+
         const selectedSound = alarmSoundSelect.value;
         if (selectedSound === 'custom' && !uploadedCustomAudioDataUrl) {
             alert('Silakan pilih file audio kustom terlebih dahulu!');
@@ -477,22 +518,25 @@ document.addEventListener('DOMContentLoaded', () => {
         // Start Alarm Sound
         startAlarmSound(alarm);
 
-        // Try focusing window if browser allows
-        try { window.focus(); } catch(e) {}
-
-        // System Notification if tab is in background
+        // System Notification (Service Worker or Standard)
         if ('Notification' in window && Notification.permission === 'granted') {
-            const notif = new Notification(`⏰ ALARM: ${alarm.label || 'Bangun Pagi!'}`, {
-                body: `Soal: ${currentProblem.questionText}\nTap di sini untuk memasukkan jawaban & mematikan alarm!`,
+            const notifTitle = `⏰ ALARM: ${alarm.label || 'Bangun Pagi!'}`;
+            const notifOptions = {
+                body: `Soal: ${currentProblem.questionText}\nTap di sini untuk menjawab & mematikan alarm!`,
                 icon: 'https://cdn-icons-png.flaticon.com/512/2972/2972531.png',
                 tag: 'math-alarm-ringing',
                 requireInteraction: true
-            });
-
-            notif.onclick = function() {
-                try { window.focus(); } catch(e) {}
-                this.close();
             };
+
+            if (swRegistration && swRegistration.showNotification) {
+                swRegistration.showNotification(notifTitle, notifOptions);
+            } else {
+                const notif = new Notification(notifTitle, notifOptions);
+                notif.onclick = function() {
+                    try { window.focus(); } catch(e) {}
+                    this.close();
+                };
+            }
         }
 
         setTimeout(() => {
@@ -502,6 +546,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Test Alarm Button Event ---
     testAlarmNowBtn.addEventListener('click', () => {
+        // Request notification permission if not asked yet
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+
         const selectedSound = alarmSoundSelect.value;
         const testAlarm = {
             id: 'test_alarm',
