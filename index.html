@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Math Alarm Clock - Aplikasi Alarm Matematika Interaktif dengan Suara Kustom & Tantangan Matematika.">
+    <title>Math Alarm - Alarm Matematika Interaktif</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header & Live Clock -->
+        <header class="app-header">
+            <div class="logo">
+                <i class="fa-solid fa-calculator logo-icon"></i>
+                <h1>Math<span>Alarm</span></h1>
+            </div>
+            <div class="live-clock-card">
+                <div class="clock-display" id="liveClock">00:00:00</div>
+                <div class="date-display" id="liveDate">Kamis, 13 Agustus 2026</div>
+            </div>
+        </header>
+
+        <!-- Main Dashboard Grid -->
+        <main class="dashboard-grid">
+            <!-- Left Panel: Create Alarm Form -->
+            <section class="card form-card">
+                <div class="card-header">
+                    <h2><i class="fa-solid fa-plus-circle"></i> Buat Alarm Baru</h2>
+                </div>
+                <form id="alarmForm" class="alarm-form">
+                    <div class="form-group time-input-group">
+                        <label for="alarmTime">Waktu Alarm</label>
+                        <input type="time" id="alarmTime" required class="custom-time-input">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="alarmLabel">Label Alarm</label>
+                        <input type="text" id="alarmLabel" placeholder="Contoh: Bangun Subuh / Kuliah Pagi" class="custom-text-input" value="Bangun Pagi!">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="alarmDifficulty">Tingkat Kesulitan Soal</label>
+                        <select id="alarmDifficulty" class="custom-select">
+                            <option value="easy">Mudah (Penjumlahan & Pengurangan)</option>
+                            <option value="medium" selected>Sedang (Penjumlahan, Pengurangan & Perkalian)</option>
+                            <option value="hard">Sulit (Perkalian & Pembagian Kompleks)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="alarmSound">Suara Alarm</label>
+                        <select id="alarmSound" class="custom-select">
+                            <option value="siren">Cyber Siren (Nyaring & Agresif)</option>
+                            <option value="pulse" selected>Digital Pulse (Enerjik)</option>
+                            <option value="radar">Radar Wave (Pemberontak)</option>
+                            <option value="bell">Electronic Bell (Klasik)</option>
+                            <option value="custom">🎵 Unggah Suara/Musik Sendiri (MP3 / WAV / OGG)...</option>
+                        </select>
+                    </div>
+
+                    <!-- Custom Audio File Upload Container (Hidden by default) -->
+                    <div class="form-group custom-audio-group hidden" id="customAudioGroup">
+                        <label for="customAudioFile">Pilih File Suara (Max 5MB)</label>
+                        <div class="file-upload-wrapper">
+                            <input type="file" id="customAudioFile" accept="audio/*" class="custom-file-input">
+                            <div class="file-preview-controls">
+                                <span class="file-name" id="fileNameDisplay">Belum ada file dipilih</span>
+                                <button type="button" class="btn btn-sm btn-outline" id="previewCustomAudioBtn" disabled>
+                                    <i class="fa-solid fa-play"></i> Test Suara
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary" id="saveAlarmBtn">
+                            <i class="fa-solid fa-bookmark"></i> Simpan Alarm
+                        </button>
+                        <button type="button" class="btn btn-secondary" id="testAlarmNowBtn">
+                            <i class="fa-solid fa-vial-virus"></i> Uji Alarm Sekarang
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- Right Panel: Saved Alarms List -->
+            <section class="card list-card">
+                <div class="card-header">
+                    <h2><i class="fa-solid fa-list-check"></i> Daftar Alarm Tersimpan</h2>
+                    <span class="badge" id="alarmCountBadge">0 Aktif</span>
+                </div>
+                <div class="alarm-list" id="alarmList">
+                    <!-- Dynamic Alarm Items insert here -->
+                    <div class="empty-state" id="emptyState">
+                        <i class="fa-solid fa-clock-rotate-left empty-icon"></i>
+                        <p>Belum ada alarm yang diset.</p>
+                        <small>Tentukan waktu dan simpan alarm pertama Anda!</small>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Ringing Alarm Modal (Overlay) -->
+    <div class="alarm-modal-overlay hidden" id="alarmModalOverlay">
+        <div class="ringing-card" id="ringingCard">
+            <div class="ringing-header">
+                <div class="alarm-bell-anim">
+                    <i class="fa-solid fa-bell ringing-icon"></i>
+                </div>
+                <h2 id="ringingLabel">Bangun Pagi!</h2>
+                <div class="ringing-time" id="ringingTime">07:00</div>
+                <p class="ringing-subtitle">Jawab soal matematika dengan BENAR untuk mematikan alarm!</p>
+            </div>
+
+            <!-- Math Question Challenge Box -->
+            <div class="math-challenge-box">
+                <div class="badge-difficulty" id="challengeDifficultyBadge">Tingkat: SEDANG</div>
+                <div class="math-question" id="mathQuestionText">12 + 15 = ?</div>
+                
+                <!-- Feedback Toast -->
+                <div class="feedback-toast hidden" id="feedbackToast">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <span id="feedbackText">Jawaban salah! Alarm tetap berbunyi & muncul soal baru.</span>
+                </div>
+
+                <form id="mathAnswerForm" class="math-answer-form" autocomplete="off">
+                    <input type="number" id="mathAnswerInput" placeholder="Ketik jawaban Anda..." class="math-input" autofocus required>
+                    <button type="submit" class="btn btn-danger btn-block" id="submitAnswerBtn">
+                        <i class="fa-solid fa-check"></i> Jawab & Matikan Alarm
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mission Completed Modal -->
+    <div class="success-modal-overlay hidden" id="successModalOverlay">
+        <div class="success-card">
+            <div class="confetti-container" id="confettiContainer"></div>
+            <div class="success-icon-box">
+                <i class="fa-solid fa-sun success-sun-icon"></i>
+            </div>
+            <h1 class="success-title">🎉 MISSION SELESAI!</h1>
+            <h2 class="success-subtitle">Selamat pagi!</h2>
+            <p class="success-message">Otak Anda telah aktif dan alarm telah berhasil dimatikan.</p>
+            <button class="btn btn-success btn-lg" id="closeSuccessModalBtn">
+                <i class="fa-solid fa-arrow-right"></i> Mulaikan Hari Ini
+            </button>
+        </div>
+    </div>
+
+    <!-- Notification Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>
